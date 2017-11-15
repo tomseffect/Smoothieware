@@ -75,6 +75,23 @@ void Adc::new_sample(int chan, uint32_t value)
     }
 }
 
+// This is based on the discussion from github:
+// https://github.com/MarlinFirmware/Marlin/issues/7585
+// other, more accurate alternatives may exist, but this
+// is a good balance of speed and accuracy
+uint16_t Adc::lowpass_filter(int chan, uint16_t value) {
+    #if defined(OVERSAMPLE)
+        const uint8_t value_shift = OVERSAMPLE * 2;
+    #else
+        const uint8_t value_shift = 4;
+    #endif
+    static uint32_t filtered_value[num_channels] = {0};
+    uint32_t &active_filter = filtered_value[chan];
+
+    active_filter = ((active_filter - (active_filter >> value_shift)) + value);
+    return active_filter >> value_shift;
+}
+
 //#define USE_MEDIAN_FILTER
 // Read the filtered value ( burst mode ) on a given pin
 unsigned int Adc::read(Pin *pin)
@@ -100,7 +117,7 @@ unsigned int Adc::read(Pin *pin)
     std::sort(median_buffer, median_buffer + num_samples);
     uint32_t sum = 0;
     for (int i = num_samples / 4; i < (num_samples - (num_samples / 4)); ++i) {
-        sum += median_buffer[i];
+        sum += this->lowpass_filter(channel, median_buffer[i]);
     }
     // this slows down the rate of change a little bit
     ave_buf[channel][3]= ave_buf[channel][2];

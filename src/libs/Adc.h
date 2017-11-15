@@ -41,6 +41,7 @@ public:
 
 private:
     PinName _pin_to_pinname(Pin *pin);
+    uint16_t lowpass_filter(int chan, uint16_t value);
     mbed::ADC *adc;
 
     static const int num_channels= 6;
