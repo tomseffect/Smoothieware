@@ -98,7 +98,6 @@
 #define ymax_checksum                      CHECKSUM("y_max")
 #define zmax_checksum                      CHECKSUM("z_max")
 
-#define ARC_ANGULAR_TRAVEL_EPSILON 5E-9F // Float (radians)
 #define PI 3.14159265358979323846F // force to be float, do not use M_PI
 
 // The Robot converts GCodes into actual movements, and then adds them to the Planner, which passes them to the Conveyor so they can be added to the queue
@@ -1165,7 +1164,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
             if( (!isnan(soft_endstop_min[i]) && transformed_target[i] < soft_endstop_min[i]) || (!isnan(soft_endstop_max[i]) && transformed_target[i] > soft_endstop_max[i]) ) {
                 if(soft_endstop_halt) {
                     if(THEKERNEL->is_grbl_mode()) {
-                        THEKERNEL->streams->printf("error: ");
+                        THEKERNEL->streams->printf("error:");
                     }else{
                         THEKERNEL->streams->printf("Error: ");
                     }
@@ -1181,7 +1180,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
                 } else {
                     // ignore it
                     if(THEKERNEL->is_grbl_mode()) {
-                        THEKERNEL->streams->printf("error: ");
+                        THEKERNEL->streams->printf("error:");
                     }else{
                         THEKERNEL->streams->printf("Error: ");
                     }
@@ -1456,7 +1455,8 @@ bool Robot::append_arc(Gcode * gcode, const float target[], const float offset[]
         return false;
     }
 
-    // Scary math
+    // Scary math.
+    // We need to use arc_milestone here to get accurate arcs as previous machine_position may have been skipped due to small movements
     float center_axis0 = this->arc_milestone[this->plane_axis_0] + offset[this->plane_axis_0];
     float center_axis1 = this->arc_milestone[this->plane_axis_1] + offset[this->plane_axis_1];
     float linear_travel = target[this->plane_axis_2] - this->arc_milestone[this->plane_axis_2];
