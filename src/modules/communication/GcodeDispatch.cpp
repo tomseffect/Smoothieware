@@ -138,6 +138,7 @@ try_again:
                 currentline = nextline;
             }
 
+            bool sent_ok= false; // used for G1 optimization
             while(possible_command.size() > 0) {
                 // assumes G or M are always the first on the line
                 size_t nextcmd = possible_command.find_first_of("GM", 2);
@@ -164,7 +165,7 @@ try_again:
                             }
                             new_message.stream->printf("ok\n");
                             delete gcode;
-                            continue;
+                            return;
 
                         }else if(!is_allowed_mcode(gcode->m)) {
                             // ignore everything, return error string to host
@@ -209,6 +210,12 @@ try_again:
                             // makes it handle the parameters as a machine position
                             THEROBOT->next_command_is_MCS= true;
 
+                        } else if(gcode->g == 1) {
+                            // optimize G1 to send ok immediately (one per line) before it is planned
+                            if(!sent_ok) {
+                                sent_ok= true;
+                                new_message.stream->printf("ok\n");
+                            }
                         }
 
                         // remember last modal group 1 code
@@ -260,7 +267,7 @@ try_again:
                                 delete gcode;
                                 return;
 
-                            case 115: // M115 Get firmware version and capabilities
+                            case 115: { // M115 Get firmware version and capabilities
                                 Version vers;
 
                                 new_message.stream->printf("FIRMWARE_NAME:Smoothieware, FIRMWARE_URL:http%%3A//smoothieware.org, X-SOURCE_CODE_URL:https://github.com/Smoothieware/Smoothieware, FIRMWARE_VERSION:%s, X-FIRMWARE_BUILD_DATE:%s, X-SYSTEM_CLOCK:%ldMHz, X-AXES:%d", vers.get_build(), vers.get_build_date(), SystemCoreClock / 1000000, MAX_ROBOT_ACTUATORS);
@@ -279,6 +286,7 @@ try_again:
 
                                 new_message.stream->printf("\nok\n");
                                 return;
+                            }
 
                             case 117: // M117 is a special non compliant Gcode as it allows arbitrary text on the line following the command
                             {    // concatenate the command again and send to panel if enabled
@@ -391,7 +399,7 @@ try_again:
                         new_message.stream->printf("Entering Alarm/Halt state\n");
                         THEKERNEL->call_event(ON_HALT, nullptr);
 
-                    }else{
+                    }else if(!sent_ok) {
 
                         if(gcode->add_nl)
                             new_message.stream->printf("\r\n");
